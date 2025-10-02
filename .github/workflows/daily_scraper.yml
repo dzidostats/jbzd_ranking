@@ -8,6 +8,7 @@ on:
 jobs:
   update-ranking:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -21,13 +22,13 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run script
-        run: python ranking.py
+        run: python test.py
 
       - name: Commit and push results
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add ranking.jsonl
+          git add output/ranking_part*.jsonl
           git commit -m "Aktualizacja rankingu JBZD"
           git push
         env:
