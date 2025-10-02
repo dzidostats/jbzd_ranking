@@ -11,7 +11,7 @@ HEADERS = {
 }
 PER_PAGE = 50
 MAX_RETRIES = 5
-PARTS = 3  # na ile części podzielić
+PARTS = 10  # na ile części podzielić
 
 async def fetch_page(session, page):
     params = {"page": page, "per_page": PER_PAGE}
