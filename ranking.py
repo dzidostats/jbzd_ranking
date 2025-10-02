@@ -11,8 +11,8 @@ HEADERS = {
     "user-agent": "Mozilla/5.0"
 }
 PER_PAGE = 50
-MAX_RETRIES = 5
-CONCURRENCY = 10  # ile stron równolegle
+MAX_RETRIES = 50
+CONCURRENCY = 5  # ile stron równolegle
 
 async def fetch_page(session, page):
     params = {"page": page, "per_page": PER_PAGE}
