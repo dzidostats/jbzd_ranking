@@ -1,34 +1,3 @@
-name: Aktualizacja JBZD
-
-on:
-  schedule:
-    - cron: '0 8 * * *' # codziennie o 8:00 UTC
-  workflow_dispatch:
-
-jobs:
-  get-pages-info:
-    runs-on: ubuntu-latest
-    outputs:
-      last_page: ${{ steps.detect.outputs.last_page }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - run: pip install requests
-      - name: Detect last page
-        id: detect
-        run: |
-          python - <<'EOF'
-          import requests
-          url = "https://m.jbzd.com.pl/ranking/get?page=1&per_page=50"
-          r = requests.get(url, headers={"accept":"application/json","user-agent":"Mozilla/5.0"})
-          data = r.json()
-          last_page = data["rankings"]["last_page"]
-          print(f"::set-output name=last_page::{last_page}")
-          EOF
-
   download-parts:
     needs: get-pages-info
     runs-on: ubuntu-latest
@@ -36,9 +5,9 @@ jobs:
       matrix:
         part: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - run: pip install aiohttp tqdm
@@ -59,7 +28,7 @@ jobs:
         run: |
           python ranking.py $start $end output/ranking_part${{ matrix.part }}.jsonl
       - name: Upload results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ranking-part${{ matrix.part }}
           path: output/ranking_part${{ matrix.part }}.jsonl
@@ -68,9 +37,9 @@ jobs:
     needs: download-parts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Download all parts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: output
       - name: Commit and push
