@@ -6,30 +6,79 @@ on:
   workflow_dispatch:
 
 jobs:
-  update-ranking:
+  get-pages-info:
     runs-on: ubuntu-latest
-
+    outputs:
+      last_page: ${{ steps.detect.outputs.last_page }}
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
+      - uses: actions/checkout@v3
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+      - run: pip install requests
+      - name: Detect last page
+        id: detect
+        run: |
+          python - <<'EOF'
+          import requests
+          url = "https://m.jbzd.com.pl/ranking/get?page=1&per_page=50"
+          r = requests.get(url, headers={"accept":"application/json","user-agent":"Mozilla/5.0"})
+          data = r.json()
+          last_page = data["rankings"]["last_page"]
+          print(f"::set-output name=last_page::{last_page}")
+          EOF
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
+  download-parts:
+    needs: get-pages-info
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        part: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - run: pip install aiohttp tqdm
+      - name: Calculate range
+        id: calc
+        run: |
+          LAST=${{ needs.get-pages-info.outputs.last_page }}
+          PART_SIZE=$((LAST / 20))
+          START=$(( ( ${{ matrix.part }} - 1 ) * PART_SIZE + 1 ))
+          if [ ${{ matrix.part }} -eq 20 ]; then
+            END=$LAST
+          else
+            END=$(( ${{ matrix.part }} * PART_SIZE ))
+          fi
+          echo "start=$START" >> $GITHUB_ENV
+          echo "end=$END" >> $GITHUB_ENV
       - name: Run script
-        run: python ranking.py
+        run: |
+          python ranking.py $start $end output/ranking_part${{ matrix.part }}.jsonl
+      - name: Upload results
+        uses: actions/upload-artifact@v3
+        with:
+          name: ranking-part${{ matrix.part }}
+          path: output/ranking_part${{ matrix.part }}.jsonl
 
-      - name: Commit and push results
+  commit-results:
+    needs: download-parts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download all parts
+        uses: actions/download-artifact@v3
+        with:
+          path: output
+      - name: Commit and push
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add output/ranking_part*.jsonl
-          git commit -m "Aktualizacja rankingu JBZD"
+          git commit -m "Aktualizacja rankingu JBZD (20 części)" || echo "Brak zmian"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
