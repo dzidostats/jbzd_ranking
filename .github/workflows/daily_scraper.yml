@@ -1,3 +1,34 @@
+name: Aktualizacja JBZD
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # codziennie o 8:00 UTC (10:00 czasu PL)
+  workflow_dispatch:
+
+jobs:
+  get-pages-info:
+    runs-on: ubuntu-latest
+    outputs:
+      last_page: ${{ steps.detect.outputs.last_page }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - name: Detect last page
+        id: detect
+        run: |
+          python - <<'EOF'
+          import requests
+          url = "https://m.jbzd.com.pl/ranking/get?page=1&per_page=50"
+          r = requests.get(url, headers={"accept":"application/json","user-agent":"Mozilla/5.0"})
+          data = r.json()
+          last_page = data["rankings"]["last_page"]
+          print(f"::set-output name=last_page::{last_page}")
+          EOF
+
   download-parts:
     needs: get-pages-info
     runs-on: ubuntu-latest
@@ -26,6 +57,7 @@
           echo "end=$END" >> $GITHUB_ENV
       - name: Run script
         run: |
+          mkdir -p output
           python ranking.py $start $end output/ranking_part${{ matrix.part }}.jsonl
       - name: Upload results
         uses: actions/upload-artifact@v4
